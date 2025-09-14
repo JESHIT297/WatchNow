@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -141,15 +142,88 @@ app.delete('/series/:id', requireAdmin, async (req, res) => {
   res.json({ message: 'Serie deleted' });
 });
 
+//ruta temporal para resetear contraseñas
+app.post('/reset-password', async (req, res) => {
+  const { email, newPassword } = req.body;
+  
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const user = await Usuario.findOneAndUpdate(
+    { email }, 
+    { password: hashedPassword }, 
+    { new: true }
+  );
+  
+  if (user) {
+    res.json({ message: 'Contraseña actualizada', email: user.email });
+  } else {
+    res.status(404).json({ error: 'Usuario no encontrado' });
+  }
+});
+
+//ruta de login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email y contraseña son requeridos' });
+  }
+  
+  const user = await Usuario.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ error: 'Usuario no encontrado. Por favor regístrate.' });
+  }
+  
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
+    return res.status(401).json({ error: 'Contraseña incorrecta' });
+  }
+  
+  res.json({ 
+    message: 'Login exitoso', 
+    user: { 
+      id: user._id, 
+      name: user.name, 
+      email: user.email, 
+      role: user.role 
+    } 
+  });
+});
+
 //rutas ususarios
 app.get('/usuarios', async (req, res) => {
   const usuarios = await Usuario.find();
   res.json(usuarios);
 });
 app.post('/usuarios', async (req, res) => {
-  const usuario = new Usuario(req.body);
-  await usuario.save();
-  res.json(usuario);
+  try {
+    const { name, email, password, role } = req.body;
+    
+    // Verificar si el usuario ya existe
+    const existingUser = await Usuario.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'El usuario ya existe' });
+    }
+    
+    // Hashear la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Crear usuario con contraseña hasheada
+    const usuario = new Usuario({
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'usuario'
+    });
+    
+    await usuario.save();
+    
+    // No devolver la contraseña en la respuesta
+    const { password: _, ...userResponse } = usuario.toObject();
+    res.json({ message: 'Usuario registrado exitosamente', user: userResponse });
+    
+  } catch (error) {
+    res.status(500).json({ error: 'Error al registrar usuario' });
+  }
 });
 app.put('/usuarios/:id', requireAdmin, async (req, res) => {
   const usuario = await Usuario.findByIdAndUpdate(req.params.id, req.body, { new: true });
