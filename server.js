@@ -1,0 +1,166 @@
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+//conection to mongo db
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(async () => {
+  console.log('Connected to MongoDB');
+  
+  // Agregar datos de prueba si las colecciones están vacías
+  const movieCount = await Movie.countDocuments();
+  if (movieCount === 0) {
+    await Movie.create([
+      { _id: 1, title: 'Inception', director: 'Christopher Nolan', year: 2010, genre: 'Sci-Fi', sinopsis: 'A thief who steals corporate secrets', rating: 8.8 },
+      { _id: 2, title: 'The Matrix', director: 'Wachowski Sisters', year: 1999, genre: 'Action', sinopsis: 'A computer hacker learns reality', rating: 8.7 }
+    ]);
+    console.log('Sample movies added');
+  }
+  
+  const userCount = await Usuario.countDocuments();
+  if (userCount === 0) {
+    await Usuario.create([
+      { _id: 1, name: 'Admin User', email: 'admin@test.com', password: '123456', role: 'admin' },
+      { _id: 2, name: 'Regular User', email: 'user@test.com', password: '123456', role: 'usuario' }
+    ]);
+    console.log('Sample users added');
+  }
+})
+.catch((err) => console.error('Error connecting to MongoDB:', err));
+
+//schema and model
+const movieSchema = new mongoose.Schema({
+  _id: Number,
+  title: String,
+  director: String,
+  year: Number,
+  genre: String,
+  sinopsis: String,  
+  rating: Number,
+});
+const Movie = mongoose.model('Movie', movieSchema);
+
+const seriesSchema = new mongoose.Schema({
+  _id: Number,
+  title: String,
+  director: String,
+  year: Number,
+  genre: String,
+  sinopsis: String, 
+  cover: String, 
+  seasons: Number,
+  episodes: Number,
+  rating: Number,
+});
+const Serie = mongoose.model('Serie', seriesSchema);
+
+const usuario = new mongoose.Schema({
+  name: String,
+  email: String,
+  password: String,
+  role: {
+    type: String,
+    enum: ['administrador', 'usuario'],
+    default: 'usuario'
+  },
+});
+const Usuario = mongoose.model('Usuario', usuario);
+
+//middleware
+app.use(express.json());
+app.use(express.static('public'));
+
+//cors for development
+app.use((req, res, next)=> {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+//middleware para verificar rol de admin
+const requireAdmin = async (req, res, next) => {
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: 'User ID required' });
+  
+  const user = await Usuario.findById(userId);
+  if (!user || user.role !== 'administrador') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
+//rutas para películas
+app.get('/movies', async (req, res) => {
+  const movies = await Movie.find();
+  res.json(movies);
+});
+
+app.post('/movies', requireAdmin, async (req, res) => {
+  const movie = new Movie(req.body);
+  await movie.save();
+  res.json(movie);
+});
+
+app.put('/movies/:id', requireAdmin, async (req, res) => {
+  const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(movie);
+});
+
+app.delete('/movies/:id', requireAdmin, async (req, res) => {
+  await Movie.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Movie deleted' });
+});
+
+//rutas para series
+app.get('/series', async (req, res) => {
+  const series = await Serie.find();
+  res.json(series);
+});
+
+app.post('/series', requireAdmin, async (req, res) => {
+  const serie = new Serie(req.body);
+  await serie.save();
+  res.json(serie);
+});
+
+app.put('/series/:id', requireAdmin, async (req, res) => {
+  const serie = await Serie.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(serie);
+});
+
+app.delete('/series/:id', requireAdmin, async (req, res) => {
+  await Serie.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Serie deleted' });
+});
+
+//rutas ususarios
+app.get('/usuarios', async (req, res) => {
+  const usuarios = await Usuario.find();
+  res.json(usuarios);
+});
+app.post('/usuarios', async (req, res) => {
+  const usuario = new Usuario(req.body);
+  await usuario.save();
+  res.json(usuario);
+});
+app.put('/usuarios/:id', requireAdmin, async (req, res) => {
+  const usuario = await Usuario.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(usuario);
+});
+app.delete('/usuarios/:id', requireAdmin, async (req, res) => {
+  await Usuario.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Usuario deleted' });
+});
+
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
