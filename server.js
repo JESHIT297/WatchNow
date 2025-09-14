@@ -7,35 +7,6 @@ const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 3000;
 
-//conection to mongo db
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(async () => {
-  console.log('Connected to MongoDB');
-  
-  // Agregar datos de prueba si las colecciones están vacías
-  const movieCount = await Movie.countDocuments();
-  if (movieCount === 0) {
-    await Movie.create([
-      { _id: 1, title: 'Inception', director: 'Christopher Nolan', year: 2010, genre: 'Sci-Fi', sinopsis: 'A thief who steals corporate secrets', rating: 8.8 },
-      { _id: 2, title: 'The Matrix', director: 'Wachowski Sisters', year: 1999, genre: 'Action', sinopsis: 'A computer hacker learns reality', rating: 8.7 }
-    ]);
-    console.log('Sample movies added');
-  }
-  
-  const userCount = await Usuario.countDocuments();
-  if (userCount === 0) {
-    await Usuario.create([
-      { _id: 1, name: 'Admin User', email: 'admin@test.com', password: '123456', role: 'admin' },
-      { _id: 2, name: 'Regular User', email: 'user@test.com', password: '123456', role: 'usuario' }
-    ]);
-    console.log('Sample users added');
-  }
-})
-.catch((err) => console.error('Error connecting to MongoDB:', err));
-
 //schema and model
 const movieSchema = new mongoose.Schema({
   _id: Number,
@@ -43,7 +14,8 @@ const movieSchema = new mongoose.Schema({
   director: String,
   year: Number,
   genre: String,
-  sinopsis: String,  
+  sinopsis: String,
+  cover: String,
   rating: Number,
 });
 const Movie = mongoose.model('Movie', movieSchema);
@@ -74,6 +46,44 @@ const usuario = new mongoose.Schema({
 });
 const Usuario = mongoose.model('Usuario', usuario);
 
+//conection to mongo db
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(async () => {
+  console.log('Connected to MongoDB');
+  
+  // Agregar datos de prueba si las colecciones están vacías
+  const movieCount = await Movie.countDocuments();
+  if (movieCount === 0) {
+    await Movie.create([
+      { _id: 1, title: 'Inception', director: 'Christopher Nolan', year: 2010, genre: 'Sci-Fi', sinopsis: 'A thief who steals corporate secrets', cover: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=300&h=400&fit=crop', rating: 8.8 },
+      { _id: 2, title: 'The Matrix', director: 'Wachowski Sisters', year: 1999, genre: 'Action', sinopsis: 'A computer hacker learns reality', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=400&fit=crop', rating: 8.7 }
+    ]);
+    console.log('Sample movies added');
+  }
+  
+  const seriesCount = await Serie.countDocuments();
+  if (seriesCount === 0) {
+    await Serie.create([
+      { _id: 1, title: 'Breaking Bad', director: 'Vince Gilligan', year: 2008, genre: 'Drama', sinopsis: 'A high school chemistry teacher turned methamphetamine producer', cover: 'https://images.unsplash.com/photo-1489599735734-79b4fc8c4c8a?w=300&h=400&fit=crop', seasons: 5, episodes: 62, rating: 9.5 },
+      { _id: 2, title: 'Stranger Things', director: 'The Duffer Brothers', year: 2016, genre: 'Sci-Fi', sinopsis: 'Kids in a small town uncover supernatural mysteries', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=400&fit=crop', seasons: 4, episodes: 34, rating: 8.7 }
+    ]);
+    console.log('Sample series added');
+  }
+  
+  const userCount = await Usuario.countDocuments();
+  if (userCount === 0) {
+    await Usuario.create([
+      { _id: 1, name: 'Admin User', email: 'admin@test.com', password: '123456', role: 'admin' },
+      { _id: 2, name: 'Regular User', email: 'user@test.com', password: '123456', role: 'usuario' }
+    ]);
+    console.log('Sample users added');
+  }
+})
+.catch((err) => console.error('Error connecting to MongoDB:', err));
+
 //middleware
 app.use(express.json());
 app.use(express.static('public'));
@@ -82,7 +92,7 @@ app.use(express.static('public'));
 app.use((req, res, next)=> {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, user-id');
   next();
 });
 

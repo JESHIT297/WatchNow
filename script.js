@@ -1,5 +1,4 @@
 // Login Form 1 - Glassmorphism Style JavaScript
-// This file extends form-utils.js with form-specific functionality
 
 class LoginForm1 {
     constructor() {
@@ -402,9 +401,15 @@ class LoginForm1 {
                 // Redirect based on role
                 setTimeout(() => {
                     if (data.user.role === 'administrador') {
-                        window.location.href = '/admin-dashboard.html';
+                        this.showNotification('Bienvenido Administrador! Redirigiendo...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'dashboards/admin-dashboard.html';
+                        }, 1000);
                     } else {
-                        window.location.href = '/user-dashboard.html';
+                        this.showNotification('Bienvenido Usuario! Redirigiendo...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'dashboards/user-dashboard.html';
+                        }, 1000);
                     }
                 }, 2000);
                 
@@ -453,10 +458,9 @@ class LoginForm1 {
     }
     
     simulateRedirect() {
-        // For demo, reset the form after 2 seconds
-        setTimeout(() => {
-            this.resetForm();
-        }, 2000);
+        // Keep success message visible - don't reset form
+        // User data is already stored in localStorage
+        console.log('Login successful. User data stored in localStorage.');
     }
     
     showLoginError(message) {

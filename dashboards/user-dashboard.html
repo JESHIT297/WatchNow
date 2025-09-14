@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WatchNow</title>
+    <link rel="stylesheet" href="dashboard-styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <h1 class="dashboard-title">WatchNow</h1>
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-details">
+                <h3 id="userName">Usuario</h3>
+                <p id="userRole">usuario</p>
+            </div>
+            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number" id="moviesCount">-</div>
+            <div class="stat-label">Películas Disponibles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="seriesCount">-</div>
+            <div class="stat-label">Series Disponibles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalContent">-</div>
+            <div class="stat-label">Total Contenido</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="dashboard-content">
+        <!-- Movies Section -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h2 class="card-title">Películas</h2>
+                <div class="card-icon">🎥</div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="loadMovies()">
+                    🔄 Actualizar
+                </button>
+            </div>
+            <div id="moviesTable">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Cargando películas...
+                </div>
+            </div>
+        </div>
+
+        <!-- Series Section -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h2 class="card-title">Series</h2>
+                <div class="card-icon">📺</div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="loadSeries()">
+                    🔄 Actualizar
+                </button>
+            </div>
+            <div id="seriesTable">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Cargando series...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations Section -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h2 class="card-title">Recomendaciones</h2>
+            <div class="card-icon">⭐</div>
+        </div>
+        <div id="recommendationsContent">
+            <p style="color: rgba(255, 255, 255, 0.8); text-align: center; padding: 20px;">
+                🎆 ¡Explora nuestro catálogo de películas y series! 🎆
+            </p>
+        </div>
+    </div>
+
+    <script src="../api-client.js"></script>
+    <script>
+        // Check authentication
+        if (!localStorage.getItem('userId')) {
+            window.location.href = '../index.html';
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboard();
+            loadMovies();
+            loadSeries();
+        });
+
+        function initDashboard() {
+            const userName = localStorage.getItem('userName') || 'Usuario';
+            const userRole = localStorage.getItem('userRole') || 'usuario';
+            
+            document.getElementById('userName').textContent = userName;
+            document.getElementById('userRole').textContent = userRole;
+            document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
+        }
+
+        async function loadMovies() {
+            console.log('Loading movies...');
+            try {
+                const response = await fetch('http://localhost:3000/movies');
+                const movies = await response.json();
+                console.log('Movies response:', response.status, movies);
+                
+                if (!movies || movies.length === 0) {
+                    document.getElementById('moviesTable').innerHTML = '<p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 20px;">No hay películas disponibles</p>';
+                    document.getElementById('moviesCount').textContent = '0';
+                    updateTotalContent();
+                    return;
+                }
+                
+                document.getElementById('moviesCount').textContent = movies.length;
+                updateTotalContent();
+                
+                const gridHTML = `
+                    <div class="content-grid" id="moviesGrid">
+                        ${movies.slice(0, 8).map(movie => `
+                            <div class="content-card">
+                                ${movie.cover ? `<img src="${movie.cover}" alt="${movie.title}" class="content-image">` : ''}
+                                <h4>${movie.title || 'Sin título'}</h4>
+                                <div class="director">${movie.director || 'Sin director'}</div>
+                                <div class="year">${movie.year || 'N/A'}</div>
+                                <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${movies.length > 8 ? `
+                        <button class="view-all-btn" onclick="toggleMoviesView()">
+                            <span id="moviesToggleText">Ver todas las películas (${movies.length})</span>
+                        </button>
+                    ` : ''}
+                `;
+                
+                window.allMovies = movies;
+                document.getElementById('moviesTable').innerHTML = gridHTML;
+            } catch (error) {
+                console.error('Error loading movies:', error);
+                document.getElementById('moviesTable').innerHTML = `<p style="color: #fca5a5; text-align: center; padding: 20px;">Error al cargar películas: ${error.message}</p>`;
+            }
+        }
+
+        async function loadSeries() {
+            console.log('Loading series...');
+            try {
+                const response = await fetch('http://localhost:3000/series');
+                const series = await response.json();
+                console.log('Series response:', response.status, series);
+                
+                if (!series || series.length === 0) {
+                    document.getElementById('seriesTable').innerHTML = '<p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 20px;">No hay series disponibles</p>';
+                    document.getElementById('seriesCount').textContent = '0';
+                    updateTotalContent();
+                    return;
+                }
+                
+                document.getElementById('seriesCount').textContent = series.length;
+                updateTotalContent();
+                
+                const gridHTML = `
+                    <div class="content-grid" id="seriesGrid">
+                        ${series.slice(0, 8).map(serie => `
+                            <div class="content-card">
+                                ${serie.cover ? `<img src="${serie.cover}" alt="${serie.title}" class="content-image">` : ''}
+                                <h4>${serie.title || 'Sin título'}</h4>
+                                <div class="director">${serie.director || 'Sin director'}</div>
+                                <div class="year">${serie.year || 'N/A'}</div>
+                                <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${series.length > 8 ? `
+                        <button class="view-all-btn" onclick="toggleSeriesView()">
+                            <span id="seriesToggleText">Ver todas las series (${series.length})</span>
+                        </button>
+                    ` : ''}
+                `;
+                
+                window.allSeries = series;
+                document.getElementById('seriesTable').innerHTML = gridHTML;
+            } catch (error) {
+                console.error('Error loading series:', error);
+                document.getElementById('seriesTable').innerHTML = `<p style="color: #fca5a5; text-align: center; padding: 20px;">Error al cargar series: ${error.message}</p>`;
+            }
+        }
+
+        function updateTotalContent() {
+            const moviesCount = parseInt(document.getElementById('moviesCount').textContent) || 0;
+            const seriesCount = parseInt(document.getElementById('seriesCount').textContent) || 0;
+            document.getElementById('totalContent').textContent = moviesCount + seriesCount;
+        }
+
+        function toggleMoviesView() {
+            const grid = document.getElementById('moviesGrid');
+            const toggleText = document.getElementById('moviesToggleText');
+            const isExpanded = grid.classList.contains('expanded');
+            
+            if (isExpanded) {
+                grid.innerHTML = window.allMovies.slice(0, 8).map(movie => `
+                    <div class="content-card">
+                        ${movie.cover ? `<img src="${movie.cover}" alt="${movie.title}" class="content-image">` : ''}
+                        <h4>${movie.title || 'Sin título'}</h4>
+                        <div class="director">${movie.director || 'Sin director'}</div>
+                        <div class="year">${movie.year || 'N/A'}</div>
+                        <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                    </div>
+                `).join('');
+                grid.classList.remove('expanded');
+                toggleText.textContent = `Ver todas las películas (${window.allMovies.length})`;
+            } else {
+                grid.innerHTML = window.allMovies.map(movie => `
+                    <div class="content-card">
+                        ${movie.cover ? `<img src="${movie.cover}" alt="${movie.title}" class="content-image">` : ''}
+                        <h4>${movie.title || 'Sin título'}</h4>
+                        <div class="director">${movie.director || 'Sin director'}</div>
+                        <div class="year">${movie.year || 'N/A'}</div>
+                        <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                    </div>
+                `).join('');
+                grid.classList.add('expanded');
+                toggleText.textContent = 'Ver menos';
+            }
+        }
+        
+        function toggleSeriesView() {
+            const grid = document.getElementById('seriesGrid');
+            const toggleText = document.getElementById('seriesToggleText');
+            const isExpanded = grid.classList.contains('expanded');
+            
+            if (isExpanded) {
+                grid.innerHTML = window.allSeries.slice(0, 8).map(serie => `
+                    <div class="content-card">
+                        ${serie.cover ? `<img src="${serie.cover}" alt="${serie.title}" class="content-image">` : ''}
+                        <h4>${serie.title || 'Sin título'}</h4>
+                        <div class="director">${serie.director || 'Sin director'}</div>
+                        <div class="year">${serie.year || 'N/A'}</div>
+                        <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                    </div>
+                `).join('');
+                grid.classList.remove('expanded');
+                toggleText.textContent = `Ver todas las series (${window.allSeries.length})`;
+            } else {
+                grid.innerHTML = window.allSeries.map(serie => `
+                    <div class="content-card">
+                        ${serie.cover ? `<img src="${serie.cover}" alt="${serie.title}" class="content-image">` : ''}
+                        <h4>${serie.title || 'Sin título'}</h4>
+                        <div class="director">${serie.director || 'Sin director'}</div>
+                        <div class="year">${serie.year || 'N/A'}</div>
+                        <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                    </div>
+                `).join('');
+                grid.classList.add('expanded');
+                toggleText.textContent = 'Ver menos';
+            }
+        }
+
+        function logout() {
+            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                window.location.href = '../index.html';
+            }
+        }
+    </script>
+</body>
+</html>
