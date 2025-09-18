@@ -90,6 +90,9 @@
             <div class="card-icon">👥</div>
         </div>
         <div class="action-buttons">
+            <button class="btn btn-primary" onclick="addUser()">
+                ➕ Agregar Usuario
+            </button>
             <button class="btn btn-secondary" onclick="loadUsers()">
                 🔄 Actualizar Usuarios
             </button>
@@ -150,6 +153,7 @@
                                 <div class="director">${movie.director || 'Sin director'}</div>
                                 <div class="year">${movie.year || 'N/A'}</div>
                                 <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                                <button class="delete-btn" onclick="deleteMovie(${movie._id})" title="Eliminar película">🗑️</button>
                             </div>
                         `).join('')}
                     </div>
@@ -191,6 +195,7 @@
                                 <div class="director">${serie.director || 'Sin director'}</div>
                                 <div class="year">${serie.year || 'N/A'}</div>
                                 <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                                <button class="delete-btn" onclick="deleteSeries(${serie._id})" title="Eliminar serie">🗑️</button>
                             </div>
                         `).join('')}
                     </div>
@@ -235,6 +240,7 @@
                                 <th>Nombre</th>
                                 <th>Email</th>
                                 <th>Rol</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -243,6 +249,11 @@
                                     <td>${user.name}</td>
                                     <td>${user.email}</td>
                                     <td>${user.role}</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-small" onclick="deleteUser('${user._id}')" title="Eliminar usuario">
+                                            🗑️
+                                        </button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -307,6 +318,50 @@
             }
         }
 
+        async function deleteMovie(movieId) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta película?')) {
+                try {
+                    const response = await fetch(`http://localhost:3000/movies/${movieId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'user-id': localStorage.getItem('userId')
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert('Película eliminada exitosamente');
+                        loadMovies();
+                    } else {
+                        alert('Error al eliminar película');
+                    }
+                } catch (error) {
+                    alert('Error de conexión');
+                }
+            }
+        }
+
+        async function deleteSeries(seriesId) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta serie?')) {
+                try {
+                    const response = await fetch(`http://localhost:3000/series/${seriesId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'user-id': localStorage.getItem('userId')
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert('Serie eliminada exitosamente');
+                        loadSeries();
+                    } else {
+                        alert('Error al eliminar serie');
+                    }
+                } catch (error) {
+                    alert('Error de conexión');
+                }
+            }
+        }
+
         function toggleMoviesView() {
             const grid = document.getElementById('moviesGrid');
             const toggleText = document.getElementById('moviesToggleText');
@@ -319,6 +374,7 @@
                         <div class="director">${movie.director || 'Sin director'}</div>
                         <div class="year">${movie.year || 'N/A'}</div>
                         <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                        <button class="delete-btn" onclick="deleteMovie(${movie._id})" title="Eliminar película">🗑️</button>
                     </div>
                 `).join('');
                 grid.classList.remove('expanded');
@@ -330,6 +386,7 @@
                         <div class="director">${movie.director || 'Sin director'}</div>
                         <div class="year">${movie.year || 'N/A'}</div>
                         <div class="rating">⭐ ${movie.rating || 'N/A'}</div>
+                        <button class="delete-btn" onclick="deleteMovie(${movie._id})" title="Eliminar película">🗑️</button>
                     </div>
                 `).join('');
                 grid.classList.add('expanded');
@@ -349,6 +406,7 @@
                         <div class="director">${serie.director || 'Sin director'}</div>
                         <div class="year">${serie.year || 'N/A'}</div>
                         <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                        <button class="delete-btn" onclick="deleteSeries(${serie._id})" title="Eliminar serie">🗑️</button>
                     </div>
                 `).join('');
                 grid.classList.remove('expanded');
@@ -360,10 +418,62 @@
                         <div class="director">${serie.director || 'Sin director'}</div>
                         <div class="year">${serie.year || 'N/A'}</div>
                         <div class="rating">⭐ ${serie.rating || 'N/A'}</div>
+                        <button class="delete-btn" onclick="deleteSeries(${serie._id})" title="Eliminar serie">🗑️</button>
                     </div>
                 `).join('');
                 grid.classList.add('expanded');
                 toggleText.textContent = 'Ver menos';
+            }
+        }
+
+        function addUser() {
+            const name = prompt('Nombre del usuario:');
+            if (name) {
+                const email = prompt('Email:');
+                const password = prompt('Contraseña:');
+                const role = prompt('Rol (administrador/usuario):') || 'usuario';
+                
+                if (email && password) {
+                    fetch('http://localhost:3000/usuarios', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name, email, password, role
+                        })
+                    }).then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            alert('Usuario agregado exitosamente');
+                            loadUsers();
+                        } else {
+                            alert(data.error || 'Error al agregar usuario');
+                        }
+                    }).catch(err => alert('Error de conexión'));
+                }
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
+                try {
+                    const response = await fetch(`http://localhost:3000/usuarios/${userId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'user-id': localStorage.getItem('userId')
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert('Usuario eliminado exitosamente');
+                        loadUsers();
+                    } else {
+                        alert('Error al eliminar usuario');
+                    }
+                } catch (error) {
+                    alert('Error de conexión');
+                }
             }
         }
 

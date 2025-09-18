@@ -47,10 +47,7 @@ const usuario = new mongoose.Schema({
 const Usuario = mongoose.model('Usuario', usuario);
 
 //conection to mongo db
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(async () => {
   console.log('Connected to MongoDB');
   
@@ -75,9 +72,10 @@ mongoose.connect(process.env.MONGO_URI, {
   
   const userCount = await Usuario.countDocuments();
   if (userCount === 0) {
+    const hashedPassword = await bcrypt.hash('123456', 10);
     await Usuario.create([
-      { _id: 1, name: 'Admin User', email: 'admin@test.com', password: '123456', role: 'admin' },
-      { _id: 2, name: 'Regular User', email: 'user@test.com', password: '123456', role: 'usuario' }
+      { _id: 1, name: 'Admin User', email: 'admin@test.com', password: hashedPassword, role: 'administrador' },
+      { _id: 2, name: 'Regular User', email: 'user@test.com', password: hashedPassword, role: 'usuario' }
     ]);
     console.log('Sample users added');
   }
@@ -101,7 +99,7 @@ const requireAdmin = async (req, res, next) => {
   const userId = req.headers['user-id'];
   if (!userId) return res.status(401).json({ error: 'User ID required' });
   
-  const user = await Usuario.findById(userId);
+  const user = await Usuario.findOne({ _id: userId });
   if (!user || user.role !== 'administrador') {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -121,12 +119,12 @@ app.post('/movies', requireAdmin, async (req, res) => {
 });
 
 app.put('/movies/:id', requireAdmin, async (req, res) => {
-  const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const movie = await Movie.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
   res.json(movie);
 });
 
 app.delete('/movies/:id', requireAdmin, async (req, res) => {
-  await Movie.findByIdAndDelete(req.params.id);
+  await Movie.findOneAndDelete({ _id: req.params.id });
   res.json({ message: 'Movie deleted' });
 });
 
@@ -143,12 +141,12 @@ app.post('/series', requireAdmin, async (req, res) => {
 });
 
 app.put('/series/:id', requireAdmin, async (req, res) => {
-  const serie = await Serie.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const serie = await Serie.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
   res.json(serie);
 });
 
 app.delete('/series/:id', requireAdmin, async (req, res) => {
-  await Serie.findByIdAndDelete(req.params.id);
+  await Serie.findOneAndDelete({ _id: req.params.id });
   res.json({ message: 'Serie deleted' });
 });
 
@@ -236,11 +234,11 @@ app.post('/usuarios', async (req, res) => {
   }
 });
 app.put('/usuarios/:id', requireAdmin, async (req, res) => {
-  const usuario = await Usuario.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const usuario = await Usuario.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
   res.json(usuario);
 });
 app.delete('/usuarios/:id', requireAdmin, async (req, res) => {
-  await Usuario.findByIdAndDelete(req.params.id);
+  await Usuario.findOneAndDelete({ _id: req.params.id });
   res.json({ message: 'Usuario deleted' });
 });
 
